@@ -463,12 +463,8 @@ function renderAll(){
   const rendPct=(rendAcum/PRINCIPAL_INICIAL)*100
   const realPct=rendPct-ipcaPct
 
-  document.getElementById('k-principal').textContent=R(saldoAtual)
-  document.getElementById('k-principal-sub').textContent=meses.length?'variação: '+R(saldoAtual-PRINCIPAL_INICIAL):'início: '+R(PRINCIPAL_INICIAL)
   document.getElementById('k-rend').textContent=meses.length?R(rendAcum):'—'
   document.getElementById('k-rend-sub').textContent=meses.length?P(rendPct,2)+' s/ principal inicial':'aguardando dados'
-  document.getElementById('k-resgatado').textContent=meses.length?R(resgateAcum):'—'
-  document.getElementById('k-resgatado-sub').textContent=meses.length?(meses.length+' resgates de R$ 12k líquido'):'para gerar R$ 12k/mês líquido'
   document.getElementById('k-ir').textContent=meses.length?R(irAcum):'—'
   document.getElementById('k-ipca').textContent=meses.length?P(ipcaPct,2):'—'
   document.getElementById('k-ipca-sub').textContent=meses.length+' meses acumulados'
