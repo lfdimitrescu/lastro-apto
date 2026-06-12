@@ -136,6 +136,7 @@ tr:last-child td{border-bottom:none}
       <div class="kpi"><div class="kpi-label">IR total pago</div><div class="kpi-value c-red" id="k-ir">—</div><div class="kpi-sub">sobre os resgates</div></div>
       <div class="kpi"><div class="kpi-label">IPCA acumulado</div><div class="kpi-value" id="k-ipca">—</div><div class="kpi-sub" id="k-ipca-sub">—</div></div>
       <div class="kpi"><div class="kpi-label">Rentabilidade real</div><div class="kpi-value" id="k-real">—</div><div class="kpi-sub">nominal − inflação</div></div>
+      <div class="kpi"><div class="kpi-label">Ganho real acum. (R$)</div><div class="kpi-value" id="k-real-rs">—</div><div class="kpi-sub">rendimento − inflação em R$</div></div>
     </div>
 
     <div class="tabs">
@@ -474,6 +475,10 @@ function renderAll(){
   const kr=document.getElementById('k-real')
   kr.textContent=meses.length?P(realPct,2):'—'
   kr.className='kpi-value '+(realPct>=0?'c-green':'c-red')
+  const realRS=rendAcum-(PRINCIPAL_INICIAL*(ipcaMult-1))
+  const krRS=document.getElementById('k-real-rs')
+  krRS.textContent=meses.length?R(realRS):'—'
+  krRS.className='kpi-value '+(realRS>=0?'c-green':'c-red')
 
   // Tabela histórico
   const tbody=document.getElementById('tbody-hist')
