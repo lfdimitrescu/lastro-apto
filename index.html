@@ -311,13 +311,21 @@ function irBadge(d){return d<=180?'br':d<=720?'ba':'bg'}
 // pctGanho = (posicao_atual - valor_aplicado) / posicao_atual
 // IR = bruto * pctGanho * aliq
 // bruto = liquido / (1 - pctGanho * aliq)
+function getPctGanho(cdb){
+  if(cdb.aplicado && cdb.posicao && cdb.posicao > cdb.aplicado){
+    return (cdb.posicao - cdb.aplicado) / cdb.posicao
+  }
+  return cdb.pctGanho || 0
+}
+
 function calcIR(bruto, cdb, aliq){
-  const pg = cdb.pctGanho || 0
+  const pg = getPctGanho(cdb)
   return bruto * pg * aliq
 }
 
 function brutoParaLiquido(liquido, cdb, aliq){
-  const pg = cdb.pctGanho || 0
+  const pg = getPctGanho(cdb)
+  if(pg <= 0) return liquido // sem ganho, sem IR
   return liquido / (1 - pg * aliq)
 }
 
