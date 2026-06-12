@@ -307,13 +307,35 @@ function irAliq(d){return d<=180?.225:d<=360?.20:d<=720?.175:.15}
 function irLabel(d){return d<=180?'22,5%':d<=360?'20,0%':d<=720?'17,5%':'15,0%'}
 function irBadge(d){return d<=180?'br':d<=720?'ba':'bg'}
 
-// Calcula bruto necessário para receber 'liquido' líquido dado alíquota IR
-// liquido = bruto_rendimento * (1 - aliq) → bruto_rendimento = liquido / (1 - aliq)
-// mas o resgate é do principal + rendimento proporcional
-// Simplificação: assume que o resgate é sobre ganho puro (CDB não venceu, resgate parcial)
-// bruto_necessario = liquido / (1 - aliq)
-function brutoParaLiquido(liquido, aliq){
-  return liquido / (1 - aliq)
+// IR incide APENAS sobre o ganho proporcional, não sobre o principal
+// Ex: CDB com saldo 210k, principal 200k → ganho = 10k (4,76% de ganho)
+// Se resgata R$ 12.881 bruto → ganho proporcional = 12.881 * (10k/210k) = R$ 613
+// IR = 613 * aliq
+// Líquido = 12.881 - IR
+//
+// Para achar o bruto necessário para X líquido:
+// líquido = bruto - (bruto * pctGanho * aliq)
+// líquido = bruto * (1 - pctGanho * aliq)
+// bruto = líquido / (1 - pctGanho * aliq)
+
+function pctGanho(cdb){
+  // % de ganho sobre o saldo atual do CDB
+  // saldo atual = valor original + rendimentos acumulados
+  // como não temos histórico detalhado por CDB, usamos rendimento acumulado proporcional
+  const rendAcumCdb = cdb.valor * cdb.taxa * (meses.reduce((a,m)=>a+m.cdi_pct/100,0))
+  const saldoAtual = cdb.valor + rendAcumCdb
+  return rendAcumCdb / saldoAtual
+}
+
+function calcIR(bruto, cdb, aliq){
+  const pg = pctGanho(cdb)
+  const ganho = bruto * pg
+  return ganho * aliq
+}
+
+function brutoParaLiquido(liquido, cdb, aliq){
+  const pg = pctGanho(cdb)
+  return liquido / (1 - pg * aliq)
 }
 
 // Escolhe o CDB com melhor alíquota IR (menor alíquota = mais dias = melhor)
@@ -416,11 +438,9 @@ function buildRows(meses){
     const aliq=melhor.aliq
 
     // Bruto necessário para gerar R$12k líquido
-    // O rendimento é tributado; o principal não
-    // Se o rendimento do mês > 12k líquido, resgata só o rendimento necessário
-    // bruto_resgate = 12k / (1 - aliq)
-    const bruto=LIQUIDO_MENSAL/(1-aliq)
-    const ir=bruto-LIQUIDO_MENSAL
+    // IR incide só sobre o ganho proporcional ao valor resgatado
+    const bruto=brutoParaLiquido(LIQUIDO_MENSAL, melhor, aliq)
+    const ir=calcIR(bruto, melhor, aliq)
     const saldoFinal=saldo+rendMes-bruto
 
     rendAcum+=rendMes
@@ -573,8 +593,8 @@ function calcSimulacao(){
   cdbs.sort((a,b)=>a.aliq-b.aliq)
 
   const melhor=cdbs[0]
-  const bruto=liquido/(1-melhor.aliq)
-  const ir=bruto-liquido
+  const bruto=brutoParaLiquido(liquido, melhor, melhor.aliq)
+  const ir=calcIR(bruto, melhor, melhor.aliq)
   const total=CDBS.reduce((a,c)=>a+c.valor,0)
 
   let html=`
@@ -596,8 +616,8 @@ function calcSimulacao(){
       <tbody>
   `
   cdbs.forEach((c,i)=>{
-    const b=liquido/(1-c.aliq)
-    const irC=b-liquido
+    const b=brutoParaLiquido(liquido, c, c.aliq)
+    const irC=calcIR(b, c, c.aliq)
     const best=i===0
     html+=`<tr style="${best?'background:rgba(29,158,117,.05)':''}">
       <td>${c.nome}<br><span style="font-size:11px;color:var(--muted)">${c.emissor}${best?' ★ melhor':''}</span></td>
