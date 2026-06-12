@@ -283,14 +283,14 @@ tr:last-child td{border-bottom:none}
 <script>
 const SB_URL='https://tnzwvcggqmptektluedx.supabase.co'
 const SB_KEY='sb_publishable_Jui1xM59LQ0CEgiHggektQ_qZvwT36u'
-const PRINCIPAL_INICIAL=1900000
+const PRINCIPAL_INICIAL=1900000 // R$ 1,9M fixo conforme acordo
 const LIQUIDO_MENSAL=12000
 
 // CDBs com datas reais de aquisição
 let CDBS=[
-  {nome:'CDB XP S.A.',   emissor:'Banco XP',       venc:'2028-01-05',taxa:1.00,valor:1504979,inicio:'2026-01-05'},
-  {nome:'CDB XP S.A.',   emissor:'Banco XP',       venc:'2027-12-30',taxa:1.00,valor:194329, inicio:'2025-12-30'},
-  {nome:'CDB Carrefour', emissor:'Banco Carrefour',venc:'2027-04-28',taxa:1.02,valor:200692, inicio:'2025-04-28'},
+  {nome:'CDB XP S.A.',   emissor:'Banco XP',       venc:'2028-01-05',taxa:1.00,valor:1497569,inicio:'2026-01-05',aplicado:1497569,posicao:1584002.92,pctGanho:86433.92/1584002.92},
+  {nome:'CDB XP S.A.',   emissor:'Banco XP',       venc:'2027-12-30',taxa:1.00,valor:193128, inicio:'2025-12-30',aplicado:193128,  posicao:204612.64, pctGanho:11484.64/204612.64},
+  {nome:'CDB Carrefour', emissor:'Banco Carrefour',venc:'2027-04-28',taxa:1.02,valor:180000, inicio:'2025-04-28',aplicado:180000,  posicao:210213.12, pctGanho:30213.12/210213.12},
 ]
 
 const {createClient}=supabase
@@ -307,34 +307,17 @@ function irAliq(d){return d<=180?.225:d<=360?.20:d<=720?.175:.15}
 function irLabel(d){return d<=180?'22,5%':d<=360?'20,0%':d<=720?'17,5%':'15,0%'}
 function irBadge(d){return d<=180?'br':d<=720?'ba':'bg'}
 
-// IR incide APENAS sobre o ganho proporcional, não sobre o principal
-// Ex: CDB com saldo 210k, principal 200k → ganho = 10k (4,76% de ganho)
-// Se resgata R$ 12.881 bruto → ganho proporcional = 12.881 * (10k/210k) = R$ 613
-// IR = 613 * aliq
-// Líquido = 12.881 - IR
-//
-// Para achar o bruto necessário para X líquido:
-// líquido = bruto - (bruto * pctGanho * aliq)
-// líquido = bruto * (1 - pctGanho * aliq)
-// bruto = líquido / (1 - pctGanho * aliq)
-
-function pctGanho(cdb){
-  // % de ganho sobre o saldo atual do CDB
-  // saldo atual = valor original + rendimentos acumulados
-  // como não temos histórico detalhado por CDB, usamos rendimento acumulado proporcional
-  const rendAcumCdb = cdb.valor * cdb.taxa * (meses.reduce((a,m)=>a+m.cdi_pct/100,0))
-  const saldoAtual = cdb.valor + rendAcumCdb
-  return rendAcumCdb / saldoAtual
-}
-
+// IR incide apenas sobre o ganho proporcional ao valor resgatado
+// pctGanho = (posicao_atual - valor_aplicado) / posicao_atual
+// IR = bruto * pctGanho * aliq
+// bruto = liquido / (1 - pctGanho * aliq)
 function calcIR(bruto, cdb, aliq){
-  const pg = pctGanho(cdb)
-  const ganho = bruto * pg
-  return ganho * aliq
+  const pg = cdb.pctGanho || 0
+  return bruto * pg * aliq
 }
 
 function brutoParaLiquido(liquido, cdb, aliq){
-  const pg = pctGanho(cdb)
+  const pg = cdb.pctGanho || 0
   return liquido / (1 - pg * aliq)
 }
 
@@ -372,7 +355,13 @@ async function initApp(){
 async function loadCarteira(){
   const{data}=await sb.from('lastro_carteira').select('*').order('id')
   if(data&&data.length){
-    CDBS=data.map(d=>({nome:d.nome,emissor:d.emissor,venc:d.venc,taxa:d.taxa,valor:d.valor,inicio:d.inicio}))
+    CDBS=data.map(d=>({
+      nome:d.nome, emissor:d.emissor, venc:d.venc, taxa:d.taxa,
+      valor:d.valor, inicio:d.inicio,
+      aplicado:d.aplicado||d.valor,
+      posicao:d.posicao||d.valor,
+      pctGanho:d.posicao&&d.aplicado?(d.posicao-d.aplicado)/d.posicao:0
+    }))
     const dt=data[0].updated_at?new Date(data[0].updated_at).toLocaleDateString('pt-BR'):''
     document.getElementById('carteira-data').textContent=dt?'Atualizado em '+dt:''
   }
