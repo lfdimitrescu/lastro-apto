@@ -363,13 +363,18 @@ async function initApp(){
 async function loadCarteira(){
   const{data}=await sb.from('lastro_carteira').select('*').order('id')
   if(data&&data.length){
-    CDBS=data.map(d=>({
-      nome:d.nome, emissor:d.emissor, venc:d.venc, taxa:d.taxa,
-      valor:d.valor, inicio:d.inicio,
-      aplicado:d.aplicado||d.valor,
-      posicao:d.posicao||d.valor,
-      pctGanho:d.posicao&&d.aplicado?(d.posicao-d.aplicado)/d.posicao:0
-    }))
+    CDBS=data.map((d,i)=>{
+      // Use DB values if available, else fallback to hardcoded defaults
+      const def=CDBS[i]||{}
+      const aplicado=d.aplicado||def.aplicado||d.valor
+      const posicao=d.posicao||def.posicao||d.valor
+      const pg=posicao>aplicado?(posicao-aplicado)/posicao:(def.pctGanho||0)
+      return {
+        nome:d.nome, emissor:d.emissor, venc:d.venc, taxa:d.taxa,
+        valor:d.valor, inicio:d.inicio,
+        aplicado, posicao, pctGanho:pg
+      }
+    })
     const dt=data[0].updated_at?new Date(data[0].updated_at).toLocaleDateString('pt-BR'):''
     document.getElementById('carteira-data').textContent=dt?'Atualizado em '+dt:''
   }
@@ -380,7 +385,12 @@ async function loadCarteira(){
 
 async function saveCarteira(cdbs){
   await sb.from('lastro_carteira').delete().neq('id',0)
-  for(const c of cdbs)await sb.from('lastro_carteira').insert({nome:c.nome,emissor:c.emissor,venc:c.venc,taxa:c.taxa,valor:c.valor,inicio:c.inicio})
+  for(const c of cdbs)await sb.from('lastro_carteira').insert({
+    nome:c.nome, emissor:c.emissor, venc:c.venc, taxa:c.taxa,
+    valor:c.valor, inicio:c.inicio,
+    aplicado:c.aplicado||c.valor,
+    posicao:c.posicao||c.valor
+  })
 }
 
 // ── DATA ───────────────────────────────────────────────────
