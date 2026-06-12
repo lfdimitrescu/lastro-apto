@@ -1,0 +1,106 @@
+import { fmt, fmtPct, diasEntre, irAliquota, irLabel, irBadgeClass } from '../utils'
+import { CDBS, TOTAL } from '../constants'
+
+export default function TabResgate({ meses }) {
+  const hoje = new Date().toISOString().split('T')[0]
+
+  const calcCdb = c => {
+    const dias = diasEntre(c.inicio, hoje)
+    const aliq = irAliquota(dias)
+    let rendBruto = 0
+    meses.forEach(m => { rendBruto += c.valor * c.taxa * (m.cdi_pct / 100) })
+    const ir = rendBruto * aliq
+    const liquido = c.valor + rendBruto - ir
+    return { dias, aliq, rendBruto, ir, liquido }
+  }
+
+  const calcs = CDBS.map(calcCdb)
+  const totalRendBruto = calcs.reduce((a, c) => a + c.rendBruto, 0)
+  const totalIR = calcs.reduce((a, c) => a + c.ir, 0)
+  const totalLiquido = calcs.reduce((a, c) => a + c.liquido, 0)
+
+  return (
+    <div className="card">
+      <div className="card-title">IR regressivo — tabela de referência</div>
+      <table className="ir-ref-table" style={{ marginBottom: 20, maxWidth: 340 }}>
+        <thead>
+          <tr>
+            <th>Prazo</th>
+            <th className="text-right">Alíquota</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Até 180 dias</td><td className="text-right"><span className="badge badge-red">22,5%</span></td></tr>
+          <tr><td>181 a 360 dias</td><td className="text-right"><span className="badge badge-amber">20,0%</span></td></tr>
+          <tr><td>361 a 720 dias</td><td className="text-right"><span className="badge badge-amber">17,5%</span></td></tr>
+          <tr><td>Acima de 720 dias</td><td className="text-right"><span className="badge badge-green">15,0%</span></td></tr>
+        </tbody>
+      </table>
+
+      <div className="card-title">Simulação de resgate — hoje ({new Date().toLocaleDateString('pt-BR')})</div>
+
+      {!meses.length && (
+        <p style={{ color: 'var(--muted)', fontSize: 13 }}>Insira pelo menos um mês para calcular o IR.</p>
+      )}
+
+      {meses.length > 0 && (
+        <>
+          {CDBS.map((c, i) => {
+            const { dias, rendBruto, ir, liquido } = calcs[i]
+            return (
+              <div className="resgate-cdb" key={i}>
+                <div className="resgate-cdb-header">
+                  <div>
+                    <div className="resgate-cdb-name">{c.nome}</div>
+                    <div className="resgate-cdb-sub">{c.emissor} · venc. {new Date(c.venc).toLocaleDateString('pt-BR')}</div>
+                  </div>
+                  <span className={`badge ${irBadgeClass(dias)}`}>IR {irLabel(dias)} · {dias} dias</span>
+                </div>
+                <div className="resgate-grid">
+                  <div>
+                    <div className="resgate-item-label">Principal</div>
+                    <div className="resgate-item-value">{fmt(c.valor)}</div>
+                  </div>
+                  <div>
+                    <div className="resgate-item-label">Rend. bruto acum.</div>
+                    <div className="resgate-item-value green">{fmt(rendBruto)}</div>
+                  </div>
+                  <div>
+                    <div className="resgate-item-label">IR ({irLabel(dias)})</div>
+                    <div className="resgate-item-value red">-{fmt(ir)}</div>
+                  </div>
+                  <div>
+                    <div className="resgate-item-label">Valor líquido</div>
+                    <div className="resgate-item-value" style={{ color: 'var(--blue)' }}>{fmt(liquido)}</div>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+
+          <div className="resgate-total">
+            <div className="resgate-total-title">Total consolidado</div>
+            <div className="resgate-grid">
+              <div>
+                <div className="resgate-item-label">Principal total</div>
+                <div className="resgate-item-value">{fmt(TOTAL)}</div>
+              </div>
+              <div>
+                <div className="resgate-item-label">Rend. bruto total</div>
+                <div className="resgate-item-value green">{fmt(totalRendBruto)}</div>
+              </div>
+              <div>
+                <div className="resgate-item-label">IR total estimado</div>
+                <div className="resgate-item-value red">-{fmt(totalIR)}</div>
+              </div>
+              <div>
+                <div className="resgate-item-label">Líquido total</div>
+                <div className="resgate-item-value" style={{ color: 'var(--blue)', fontSize: 16 }}>{fmt(totalLiquido)}</div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}

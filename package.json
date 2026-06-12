@@ -1,0 +1,56 @@
+import { useState } from 'react'
+import { sb } from '../supabase'
+
+export default function Login() {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const handleLogin = async e => {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+    const { error } = await sb.auth.signInWithPassword({ email, password })
+    if (error) setError('E-mail ou senha incorretos.')
+    setLoading(false)
+  }
+
+  return (
+    <div className="auth-screen">
+      <div className="auth-card">
+        <div className="auth-logo">
+          <div className="auth-logo-mark">A</div>
+          <h1>Lastro — Apartamento</h1>
+          <p>Conta 16034737 · XP Unique</p>
+        </div>
+        <form onSubmit={handleLogin}>
+          <div className="auth-field">
+            <label>E-mail</label>
+            <input
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="seu@email.com"
+              required
+            />
+          </div>
+          <div className="auth-field">
+            <label>Senha</label>
+            <input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder="••••••••"
+              required
+            />
+          </div>
+          <button className="btn-primary" type="submit" disabled={loading}>
+            {loading ? 'Entrando...' : 'Entrar'}
+          </button>
+          <div className="auth-error">{error}</div>
+        </form>
+      </div>
+    </div>
+  )
+}

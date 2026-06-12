@@ -1,0 +1,152 @@
+import { useState, useEffect } from 'react'
+import { sb } from '../supabase'
+import { fmt, fmtPct, mesFmt } from '../utils'
+import { CDBS, PGTO_MENSAL, TOTAL } from '../constants'
+import ModalMes from '../components/ModalMes'
+import TabHistorico from '../components/TabHistorico'
+import TabComposicao from '../components/TabComposicao'
+import TabResgate from '../components/TabResgate'
+
+const TABS = [
+  { id: 'historico', label: 'Histórico mensal' },
+  { id: 'composicao', label: 'Composição CDBs' },
+  { id: 'resgate', label: 'Simulação de resgate' },
+]
+
+export default function Dashboard({ session }) {
+  const [meses, setMeses] = useState([])
+  const [activeTab, setActiveTab] = useState('historico')
+  const [showModal, setShowModal] = useState(false)
+  const [loading, setLoading] = useState(true)
+
+  const loadData = async () => {
+    const { data } = await sb.from('lastro_meses').select('*').order('mes', { ascending: true })
+    setMeses(data || [])
+    setLoading(false)
+  }
+
+  useEffect(() => { loadData() }, [])
+
+  const handleDelete = async mes => {
+    if (!confirm('Remover ' + mesFmt(mes) + '?')) return
+    await sb.from('lastro_meses').delete().eq('mes', mes)
+    loadData()
+  }
+
+  const handleLogout = () => sb.auth.signOut()
+
+  // KPI calculations
+  let rendAcum = 0, pgtoAcum = 0, ipcaMult = 1
+  meses.forEach(m => {
+    const cdi = m.cdi_pct / 100
+    let rendMes = 0
+    CDBS.forEach(c => { rendMes += c.valor * c.taxa * cdi })
+    rendAcum += rendMes
+    pgtoAcum += PGTO_MENSAL
+    ipcaMult *= (1 + m.ipca_pct / 100)
+  })
+  const saldoAcum = rendAcum - pgtoAcum
+  const rendAcumPct = (rendAcum / TOTAL) * 100
+  const ipcaAcumPct = (ipcaMult - 1) * 100
+  const realPct = rendAcumPct - ipcaAcumPct
+
+  // Check if current month is missing
+  const hoje = new Date()
+  const mesAtual = hoje.getFullYear() + '-' + String(hoje.getMonth() + 1).padStart(2, '0')
+  const pendente = meses.length > 0 && !meses.some(m => m.mes === mesAtual)
+
+  return (
+    <>
+      <div className="topbar">
+        <div className="topbar-left">
+          <div className="topbar-logo">A</div>
+          <div>
+            <div className="topbar-title">Lastro — Apartamento</div>
+            <div className="topbar-sub">Conta 16034737 · XP Unique · R$ 1.900.000</div>
+          </div>
+        </div>
+        <div className="topbar-right">
+          <span className="user-email">{session.user.email}</span>
+          <button className="btn-ghost" onClick={handleLogout}>Sair</button>
+        </div>
+      </div>
+
+      <div className="main">
+        <div className="actions-bar">
+          <h2>Painel de acompanhamento</h2>
+          <button className="btn-add" onClick={() => setShowModal(true)}>+ Inserir mês</button>
+        </div>
+
+        {pendente && (
+          <div className="status-bar">
+            ⚠ CDI/IPCA de {mesFmt(mesAtual)} ainda não inseridos. Clique em "Inserir mês" para atualizar.
+          </div>
+        )}
+
+        {!loading && (
+          <>
+            {/* KPIs */}
+            <div className="kpi-grid">
+              <div className="kpi">
+                <div className="kpi-label">Principal total</div>
+                <div className="kpi-value">{fmt(TOTAL)}</div>
+                <div className="kpi-sub">3 CDBs selecionados</div>
+              </div>
+              <div className="kpi">
+                <div className="kpi-label">Rendimento bruto acum.</div>
+                <div className="kpi-value green">{meses.length ? fmt(rendAcum) : '—'}</div>
+                <div className="kpi-sub">{meses.length ? fmtPct(rendAcumPct, 2) + ' s/ principal' : `${meses.length} meses`}</div>
+              </div>
+              <div className="kpi">
+                <div className="kpi-label">Pagamentos acumulados</div>
+                <div className="kpi-value">{meses.length ? fmt(pgtoAcum) : '—'}</div>
+                <div className="kpi-sub">R$ 12.000/mês</div>
+              </div>
+              <div className="kpi">
+                <div className="kpi-label">Saldo líquido acum.</div>
+                <div className={`kpi-value ${saldoAcum >= 0 ? 'green' : 'red'}`}>{meses.length ? fmt(saldoAcum) : '—'}</div>
+                <div className="kpi-sub">rendimento − pagamentos</div>
+              </div>
+              <div className="kpi">
+                <div className="kpi-label">IPCA acumulado</div>
+                <div className="kpi-value">{meses.length ? fmtPct(ipcaAcumPct, 2) : '—'}</div>
+                <div className="kpi-sub">{meses.length} meses acumulados</div>
+              </div>
+              <div className="kpi">
+                <div className="kpi-label">Rentabilidade real</div>
+                <div className={`kpi-value ${realPct >= 0 ? 'green' : 'red'}`}>{meses.length ? fmtPct(realPct, 2) : '—'}</div>
+                <div className="kpi-sub">nominal − inflação</div>
+              </div>
+            </div>
+
+            {/* Tabs */}
+            <div className="tabs">
+              {TABS.map(t => (
+                <button
+                  key={t.id}
+                  className={`tab-btn ${activeTab === t.id ? 'active' : ''}`}
+                  onClick={() => setActiveTab(t.id)}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            {activeTab === 'historico' && <TabHistorico meses={meses} onDelete={handleDelete} />}
+            {activeTab === 'composicao' && <TabComposicao meses={meses} />}
+            {activeTab === 'resgate' && <TabResgate meses={meses} />}
+          </>
+        )}
+
+        {loading && <div className="loading">Carregando dados...</div>}
+      </div>
+
+      {showModal && (
+        <ModalMes
+          onClose={() => setShowModal(false)}
+          onSaved={() => { setShowModal(false); loadData() }}
+        />
+      )}
+    </>
+  )
+}
