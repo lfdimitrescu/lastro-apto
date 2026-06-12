@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lastro — Apartamento</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root{--bg:#f7f6f3;--surface:#fff;--border:rgba(0,0,0,.08);--border-strong:rgba(0,0,0,.15);--text:#1a1a18;--muted:#6b6b67;--subtle:#9b9b96;--green:#1D9E75;--green-bg:#E1F5EE;--green-text:#0F6E56;--amber:#BA7517;--amber-bg:#FAEEDA;--amber-text:#633806;--red:#E24B4A;--red-bg:#FCEBEB;--red-text:#501313;--blue:#185FA5;--blue-bg:#E6F1FB;--blue-text:#042C53;--gold:#c9a84c;--r:10px;--rs:6px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh}
+/* AUTH */
+.auth{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1a1a18,#2d2d29)}
+.auth-card{background:var(--surface);border-radius:16px;padding:40px;width:360px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.logo-mark{width:48px;height:48px;background:var(--gold);border-radius:12px;display:inline-flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#fff;margin-bottom:12px}
+.auth-logo{text-align:center;margin-bottom:28px}
+.auth-logo h1{font-size:17px;font-weight:600}
+.auth-logo p{font-size:12px;color:var(--muted);margin-top:3px}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:12px;font-weight:500;color:var(--muted);margin-bottom:5px}
+.field input,.field select{width:100%;padding:10px 12px;border:1px solid var(--border-strong);border-radius:var(--rs);font-size:14px;outline:none;color:var(--text);background:var(--surface);transition:border-color .15s}
+.field input:focus,.field select:focus{border-color:var(--gold)}
+.err{color:var(--red);font-size:12px;margin-top:10px;text-align:center;min-height:18px}
+/* BUTTONS */
+.btn{padding:10px 18px;border-radius:var(--rs);font-size:14px;font-weight:500;cursor:pointer;transition:opacity .15s;border:none}
+.btn-dark{background:var(--text);color:#fff;width:100%;margin-top:4px}
+.btn-dark:hover{opacity:.85}
+.btn-gold{background:var(--gold);color:#fff}
+.btn-gold:hover{opacity:.88}
+.btn-outline{background:transparent;border:1px solid var(--border-strong);color:var(--muted)}
+.btn-outline:hover{background:var(--bg)}
+.btn-sm{padding:6px 12px;font-size:12px}
+/* TOPBAR */
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.topbar-left{display:flex;align-items:center;gap:12px}
+.topbar-logo{width:32px;height:32px;background:var(--gold);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff}
+.topbar-title{font-size:14px;font-weight:600}
+.topbar-sub{font-size:11px;color:var(--muted)}
+.topbar-right{display:flex;gap:8px;align-items:center}
+/* MAIN */
+.main{max-width:1100px;margin:0 auto;padding:28px 24px}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px}
+.page-header h2{font-size:18px;font-weight:600}
+.btn-group{display:flex;gap:8px;flex-wrap:wrap}
+/* KPI */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px}
+.kpi-label{font-size:11px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+.kpi-value{font-size:20px;font-weight:600}
+.kpi-sub{font-size:11px;color:var(--subtle);margin-top:3px}
+.c-green{color:var(--green)}.c-red{color:var(--red)}.c-amber{color:var(--amber)}.c-blue{color:var(--blue)}
+/* CARD */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px 22px;margin-bottom:16px}
+.card-title{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:16px}
+/* TABLE */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;padding:8px 10px;border-bottom:1px solid var(--border)}
+td{padding:9px 10px;border-bottom:1px solid var(--border)}
+tr:last-child td{border-bottom:none}
+.tr-total td{font-weight:600;background:var(--bg)}
+.tr{text-align:right}
+/* BADGE */
+.badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px}
+.bg{background:var(--green-bg);color:var(--green-text)}
+.ba{background:var(--amber-bg);color:var(--amber-text)}
+.bb{background:var(--blue-bg);color:var(--blue-text)}
+.br{background:var(--red-bg);color:var(--red-text)}
+/* TABS */
+.tabs{display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--border)}
+.tab{padding:8px 16px;font-size:13px;font-weight:500;color:var(--muted);border:none;background:transparent;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .15s}
+.tab.active{color:var(--text);border-bottom-color:var(--gold)}
+.tab-pane{display:none}.tab-pane.active{display:block}
+/* MODAL */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:200}
+.modal{background:var(--surface);border-radius:14px;padding:28px 30px;width:460px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.modal h3{font-size:16px;font-weight:600;margin-bottom:18px}
+.modal-actions{display:flex;gap:10px;margin-top:16px}
+.hint{font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.6}
+.hint a{color:var(--blue)}
+/* ALERT */
+.alert{border-radius:var(--rs);padding:10px 14px;font-size:12px;margin-bottom:16px}
+.alert-amber{background:var(--amber-bg);border:1px solid rgba(186,117,23,.2);color:var(--amber-text)}
+.alert-green{background:var(--green-bg);border:1px solid rgba(29,158,117,.2);color:var(--green-text)}
+.alert-red{background:var(--red-bg);border:1px solid rgba(226,75,74,.2);color:var(--red-text)}
+/* CHART */
+.chart-wrap{position:relative;height:220px;margin-top:8px}
+.legend{display:flex;flex-wrap:wrap;gap:16px;margin-top:10px;font-size:11px;color:var(--muted)}
+.legend span{display:flex;align-items:center;gap:4px}
+.dot{width:10px;height:10px;border-radius:2px;display:inline-block}
+.line-dot{width:10px;height:3px;border-radius:1px;display:inline-block}
+/* UPLOAD */
+.upload-area{border:2px dashed var(--border-strong);border-radius:var(--r);padding:32px;text-align:center;cursor:pointer;transition:border-color .15s;margin-bottom:16px}
+.upload-area:hover,.upload-area.drag{border-color:var(--gold)}
+.upload-area p{color:var(--muted);font-size:13px;margin-top:8px}
+.upload-area .icon{font-size:32px}
+/* RESGATE */
+.resgate-cdb{border:1px solid var(--border);border-radius:var(--rs);padding:14px;margin-bottom:10px}
+.resgate-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-top:10px}
+.ri-label{font-size:11px;color:var(--subtle);margin-bottom:2px}
+.ri-value{font-size:14px;font-weight:600}
+.resgate-total{background:var(--bg);border:1px solid var(--border-strong);border-radius:var(--rs);padding:14px}
+/* LOADING */
+.loading{text-align:center;padding:40px;color:var(--muted);font-size:13px}
+@media(max-width:600px){.main{padding:16px 14px}.topbar{padding:0 14px}.kpi-value{font-size:17px}}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════ AUTH -->
+<div id="auth-screen" class="auth">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="logo-mark">A</div>
+      <h1>Lastro — Apartamento</h1>
+      <p>Conta 16034737 · XP Unique</p>
+    </div>
+    <div class="field"><label>E-mail</label><input type="email" id="email" placeholder="seu@email.com"></div>
+    <div class="field"><label>Senha</label><input type="password" id="pw" placeholder="••••••••"></div>
+    <button class="btn btn-dark" onclick="doLogin()">Entrar</button>
+    <div class="err" id="auth-err"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ APP -->
+<div id="app" style="display:none">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-logo">A</div>
+      <div>
+        <div class="topbar-title">Lastro — Apartamento</div>
+        <div class="topbar-sub" id="topbar-sub">Conta 16034737 · XP Unique</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <span style="font-size:11px;color:var(--muted)" id="user-email"></span>
+      <button class="btn btn-outline btn-sm" onclick="doLogout()">Sair</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="page-header">
+      <h2>Painel de acompanhamento</h2>
+      <div class="btn-group">
+        <button class="btn btn-outline btn-sm" onclick="openUpload()">📄 Atualizar carteira</button>
+        <button class="btn btn-gold btn-sm" onclick="openModal()">+ Inserir mês</button>
+      </div>
+    </div>
+
+    <div id="alert-pendente" class="alert alert-amber" style="display:none"></div>
+    <div id="alert-carteira" class="alert alert-green" style="display:none"></div>
+
+    <!-- KPIs -->
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-label">Principal total</div><div class="kpi-value" id="k-principal">—</div><div class="kpi-sub" id="k-principal-sub">3 CDBs</div></div>
+      <div class="kpi"><div class="kpi-label">Rendimento bruto acum.</div><div class="kpi-value c-green" id="k-rend">—</div><div class="kpi-sub" id="k-rend-sub">—</div></div>
+      <div class="kpi"><div class="kpi-label">Pagamentos acumulados</div><div class="kpi-value" id="k-pgto">—</div><div class="kpi-sub">R$ 12.000/mês</div></div>
+      <div class="kpi"><div class="kpi-label">Saldo líquido acum.</div><div class="kpi-value" id="k-saldo">—</div><div class="kpi-sub">rendimento − pagamentos</div></div>
+      <div class="kpi"><div class="kpi-label">IPCA acumulado</div><div class="kpi-value" id="k-ipca">—</div><div class="kpi-sub" id="k-ipca-sub">—</div></div>
+      <div class="kpi"><div class="kpi-label">Rentabilidade real</div><div class="kpi-value" id="k-real">—</div><div class="kpi-sub">nominal − inflação</div></div>
+    </div>
+
+    <!-- TABS -->
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('historico',this)">Histórico mensal</button>
+      <button class="tab" onclick="switchTab('composicao',this)">Composição CDBs</button>
+      <button class="tab" onclick="switchTab('resgate',this)">Simulação de resgate</button>
+    </div>
+
+    <!-- TAB HISTÓRICO -->
+    <div class="tab-pane active" id="tab-historico">
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">Evolução acumulada</div>
+        <div class="chart-wrap"><canvas id="chart" role="img" aria-label="Evolução rendimento vs pagamentos"></canvas></div>
+        <div class="legend">
+          <span><span class="dot" style="background:#1D9E75"></span>Rendimento bruto acum.</span>
+          <span><span class="dot" style="background:rgba(186,117,23,.35);border:1px solid #BA7517"></span>IPCA acum. (R$)</span>
+          <span><span class="line-dot" style="background:#E24B4A"></span>Pagamentos acum.</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Registro mensal</div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th>Mês</th><th class="tr">CDI (%)</th><th class="tr">IPCA (%)</th>
+              <th class="tr">Rend. bruto</th><th class="tr">Pagamento</th><th class="tr">Sobra</th>
+              <th class="tr">Rend. acum.</th><th class="tr">Pag. acum.</th><th class="tr">Saldo acum.</th><th></th>
+            </tr></thead>
+            <tbody id="tbody-hist"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB COMPOSIÇÃO -->
+    <div class="tab-pane" id="tab-composicao">
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div class="card-title" style="margin-bottom:0">CDBs que compõem o lastro</div>
+          <div style="font-size:11px;color:var(--muted)" id="carteira-data"></div>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th>Ativo</th><th>Emissor</th><th>Vencimento</th><th class="tr">Taxa</th>
+              <th class="tr">% Aloc.</th><th class="tr">Valor alocado</th><th class="tr">Rend. último mês</th>
+            </tr></thead>
+            <tbody id="tbody-comp"></tbody>
+            <tfoot><tr class="tr-total">
+              <td colspan="4">Total</td>
+              <td class="tr">100,0%</td>
+              <td class="tr" id="tfoot-valor">—</td>
+              <td class="tr c-green" id="tfoot-rend">—</td>
+            </tr></tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB RESGATE -->
+    <div class="tab-pane" id="tab-resgate">
+      <div class="card">
+        <div class="card-title">IR regressivo — referência</div>
+        <table style="max-width:340px;margin-bottom:20px">
+          <thead><tr><th>Prazo</th><th class="tr">Alíquota</th></tr></thead>
+          <tbody>
+            <tr><td>Até 180 dias</td><td class="tr"><span class="badge br">22,5%</span></td></tr>
+            <tr><td>181 a 360 dias</td><td class="tr"><span class="badge ba">20,0%</span></td></tr>
+            <tr><td>361 a 720 dias</td><td class="tr"><span class="badge ba">17,5%</span></td></tr>
+            <tr><td>Acima de 720 dias</td><td class="tr"><span class="badge bg">15,0%</span></td></tr>
+          </tbody>
+        </table>
+        <div class="card-title">Simulação — resgate hoje (<span id="hoje-data"></span>)</div>
+        <div id="resgate-content"><div class="loading">Insira pelo menos um mês para calcular.</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ MODAL MÊS -->
+<div class="overlay" id="modal-mes" style="display:none" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <h3>Inserir dados do mês</h3>
+    <div class="field"><label>Mês de referência</label><input type="month" id="m-mes"></div>
+    <div class="field"><label>CDI do mês (%) — ex: 1.070</label><input type="number" id="m-cdi" step="0.001" min="0" placeholder="1.070"></div>
+    <div class="field"><label>IPCA do mês (%) — ex: 0.500</label><input type="number" id="m-ipca" step="0.001" min="0" placeholder="0.500"></div>
+    <p class="hint">Consulte o CDI em <a href="https://www.bcb.gov.br/htms/selic/selicmes.asp" target="_blank">bcb.gov.br</a> e o IPCA em <a href="https://www.ibge.gov.br/explica/inflacao.php" target="_blank">ibge.gov.br</a></p>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-dark" onclick="saveMes()" style="flex:1">Salvar</button>
+    </div>
+    <div class="err" id="modal-err"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ MODAL UPLOAD -->
+<div class="overlay" id="modal-upload" style="display:none" onclick="if(event.target===this)closeUpload()">
+  <div class="modal">
+    <h3>Atualizar carteira</h3>
+    <p class="hint" style="margin-bottom:16px">Faça upload do relatório PDF da XP (XPerformance). O sistema vai ler os saldos dos 3 CDBs e recalcular os pesos automaticamente.</p>
+
+    <div class="upload-area" id="drop-area" onclick="document.getElementById('file-input').click()"
+      ondragover="event.preventDefault();this.classList.add('drag')"
+      ondragleave="this.classList.remove('drag')"
+      ondrop="handleDrop(event)">
+      <div class="icon">📄</div>
+      <p id="upload-label">Clique ou arraste o PDF aqui</p>
+    </div>
+    <input type="file" id="file-input" accept=".pdf" style="display:none" onchange="handleFile(this.files[0])">
+
+    <div id="upload-preview" style="display:none">
+      <div class="card-title">CDBs identificados no PDF</div>
+      <div id="preview-content"></div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" onclick="closeUpload()">Cancelar</button>
+        <button class="btn btn-gold" onclick="confirmarCarteira()" style="flex:1">Confirmar e salvar</button>
+      </div>
+    </div>
+
+    <div id="upload-manual" style="margin-top:16px">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;text-align:center">— ou insira os saldos manualmente —</div>
+      <div id="manual-fields"></div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" onclick="closeUpload()">Cancelar</button>
+        <button class="btn btn-dark" onclick="salvarManual()" style="flex:1">Salvar saldos</button>
+      </div>
+    </div>
+
+    <div class="err" id="upload-err"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════ CONFIG
+const SB_URL = 'https://tnzwvcggqmptektluedx.supabase.co'
+const SB_KEY = 'sb_publishable_Jui1xM59LQ0CEgiHggektQ_qZvwT36u'
+const PGTO = 12000
+
+// CDBs padrão (atualizados via upload)
+let CDBS = [
+  { nome:'CDB XP S.A.', emissor:'Banco XP', venc:'2028-01-05', taxa:1.00, valor:1504979, inicio:'2025-01-05' },
+  { nome:'CDB XP S.A.', emissor:'Banco XP', venc:'2027-12-30', taxa:1.00, valor:194329,  inicio:'2025-12-30' },
+  { nome:'CDB Carrefour', emissor:'Banco Carrefour', venc:'2027-04-28', taxa:1.02, valor:200692, inicio:'2025-04-28' },
+]
+
+let pendingCdbs = null // parsed from PDF before confirm
+
+// ═══════════════════════════════════════════════════════ SUPABASE
+const { createClient } = supabase
+const sb = createClient(SB_URL, SB_KEY)
+
+// ═══════════════════════════════════════════════════════ UTILS
+const R = n => 'R$ ' + parseFloat(n).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})
+const P = (n,d=3) => parseFloat(n).toFixed(d).replace('.',',') + '%'
+const MN = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+const mfmt = ym => { const [y,m]=ym.split('-'); return MN[parseInt(m)-1]+'/'+y.slice(2) }
+const dias = (a,b) => Math.round((new Date(b)-new Date(a))/86400000)
+
+function irAliq(d){ return d<=180?.225:d<=360?.20:d<=720?.175:.15 }
+function irLabel(d){ return d<=180?'22,5%':d<=360?'20,0%':d<=720?'17,5%':'15,0%' }
+function irBadge(d){ return d<=180?'br':d<=720?'ba':'bg' }
+
+function totalPrincipal(){ return CDBS.reduce((a,c)=>a+c.valor,0) }
+
+function buildRows(meses){
+  let ra=0,pa=0
+  return meses.map(m=>{
+    const cdi=m.cdi_pct/100
+    let rm=0; CDBS.forEach(c=>rm+=c.valor*c.taxa*cdi)
+    ra+=rm; pa+=PGTO
+    return {mes:m.mes,cdi:m.cdi_pct,ipca:m.ipca_pct,rm,pgto:PGTO,sobra:rm-PGTO,ra,pa,saldo:ra-pa}
+  })
+}
+
+// ═══════════════════════════════════════════════════════ AUTH
+async function doLogin(){
+  const email=document.getElementById('email').value.trim()
+  const pw=document.getElementById('pw').value
+  document.getElementById('auth-err').textContent=''
+  const {error}=await sb.auth.signInWithPassword({email,password:pw})
+  if(error){document.getElementById('auth-err').textContent='E-mail ou senha incorretos.';return}
+  initApp()
+}
+async function doLogout(){ await sb.auth.signOut(); location.reload() }
+
+// ═══════════════════════════════════════════════════════ INIT
+async function initApp(){
+  document.getElementById('auth-screen').style.display='none'
+  document.getElementById('app').style.display='block'
+  const {data:{session}}=await sb.auth.getSession()
+  if(session) document.getElementById('user-email').textContent=session.user.email
+  document.getElementById('hoje-data').textContent=new Date().toLocaleDateString('pt-BR')
+  await loadCarteira()
+  await loadData()
+}
+
+// ═══════════════════════════════════════════════════════ CARTEIRA (Supabase)
+async function loadCarteira(){
+  const {data}=await sb.from('lastro_carteira').select('*').order('id')
+  if(data&&data.length){
+    CDBS=data.map(d=>({nome:d.nome,emissor:d.emissor,venc:d.venc,taxa:d.taxa,valor:d.valor,inicio:d.inicio}))
+    const dt=data[0].updated_at?new Date(data[0].updated_at).toLocaleDateString('pt-BR'):''
+    document.getElementById('carteira-data').textContent=dt?'Atualizado em '+dt:''
+    document.getElementById('alert-carteira').style.display='block'
+    document.getElementById('alert-carteira').textContent='✓ Carteira atualizada. Principal total: '+R(totalPrincipal())
+  }
+  document.getElementById('topbar-sub').textContent='Conta 16034737 · XP Unique · '+R(totalPrincipal())
+  renderManualFields()
+}
+
+async function saveCarteira(cdbs){
+  await sb.from('lastro_carteira').delete().neq('id',0)
+  for(const c of cdbs){
+    await sb.from('lastro_carteira').insert({nome:c.nome,emissor:c.emissor,venc:c.venc,taxa:c.taxa,valor:c.valor,inicio:c.inicio})
+  }
+}
+
+// ═══════════════════════════════════════════════════════ DATA
+let meses=[]
+let chartInst=null
+
+async function loadData(){
+  const {data}=await sb.from('lastro_meses').select('*').order('mes',{ascending:true})
+  meses=data||[]
+  renderAll()
+}
+
+async function saveMes(){
+  const mes=document.getElementById('m-mes').value
+  const cdi=parseFloat(document.getElementById('m-cdi').value)
+  const ipca=parseFloat(document.getElementById('m-ipca').value)
+  document.getElementById('modal-err').textContent=''
+  if(!mes||isNaN(cdi)||isNaN(ipca)){document.getElementById('modal-err').textContent='Preencha todos os campos.';return}
+  const {error}=await sb.from('lastro_meses').upsert({mes,cdi_pct:cdi,ipca_pct:ipca},{onConflict:'mes'})
+  if(error){document.getElementById('modal-err').textContent='Erro: '+error.message;return}
+  closeModal(); await loadData()
+}
+
+async function deleteMes(mes){
+  if(!confirm('Remover '+mfmt(mes)+'?'))return
+  await sb.from('lastro_meses').delete().eq('mes',mes)
+  await loadData()
+}
+
+// ═══════════════════════════════════════════════════════ RENDER
+function renderAll(){
+  const rows=buildRows(meses)
+  const last=rows[rows.length-1]
+  const TOTAL=totalPrincipal()
+
+  // Pendente
+  const hoje=new Date()
+  const ma=hoje.getFullYear()+'-'+String(hoje.getMonth()+1).padStart(2,'0')
+  const pend=meses.length>0&&!meses.some(m=>m.mes===ma)
+  const elP=document.getElementById('alert-pendente')
+  elP.style.display=pend?'block':'none'
+  if(pend)elP.textContent='⚠ CDI/IPCA de '+mfmt(ma)+' ainda não inseridos.'
+
+  // KPIs
+  const ra=last?last.ra:0, pa=last?last.pa:0, saldo=ra-pa
+  let ipcaMult=1; meses.forEach(m=>ipcaMult*=(1+m.ipca_pct/100))
+  const ipcaPct=(ipcaMult-1)*100
+  const rendPct=(ra/TOTAL)*100
+  const realPct=rendPct-ipcaPct
+
+  document.getElementById('k-principal').textContent=R(TOTAL)
+  document.getElementById('k-principal-sub').textContent='3 CDBs · '+P(100,0)+' alocado'
+  document.getElementById('k-rend').textContent=meses.length?R(ra):'—'
+  document.getElementById('k-rend-sub').textContent=meses.length?P(rendPct,2)+' s/ principal':'aguardando dados'
+  document.getElementById('k-pgto').textContent=meses.length?R(pa):'—'
+  const ks=document.getElementById('k-saldo')
+  ks.textContent=meses.length?R(saldo):'—'
+  ks.className='kpi-value '+(saldo>=0?'c-green':'c-red')
+  document.getElementById('k-ipca').textContent=meses.length?P(ipcaPct,2):'—'
+  document.getElementById('k-ipca-sub').textContent=meses.length+' meses acumulados'
+  const kr=document.getElementById('k-real')
+  kr.textContent=meses.length?P(realPct,2):'—'
+  kr.className='kpi-value '+(realPct>=0?'c-green':'c-red')
+
+  // Tabela histórico
+  const tbody=document.getElementById('tbody-hist')
+  tbody.innerHTML=''
+  if(!meses.length){
+    tbody.innerHTML='<tr><td colspan="10" class="loading">Nenhum mês inserido ainda.</td></tr>'
+  } else {
+    rows.forEach(r=>{
+      const tr=document.createElement('tr')
+      tr.innerHTML=`
+        <td><strong>${mfmt(r.mes)}</strong></td>
+        <td class="tr">${P(r.cdi)}</td><td class="tr">${P(r.ipca)}</td>
+        <td class="tr c-green">${R(r.rm)}</td><td class="tr">${R(r.pgto)}</td>
+        <td class="tr ${r.sobra>=0?'c-green':'c-red'}">${R(r.sobra)}</td>
+        <td class="tr">${R(r.ra)}</td><td class="tr">${R(r.pa)}</td>
+        <td class="tr ${r.saldo>=0?'c-green':'c-red'}">${R(r.saldo)}</td>
+        <td><button onclick="deleteMes('${r.mes}')" style="background:none;border:none;cursor:pointer;color:var(--subtle);font-size:18px">×</button></td>
+      `
+      tbody.appendChild(tr)
+    })
+  }
+
+  // Chart
+  if(meses.length){
+    const labels=rows.map(r=>mfmt(r.mes))
+    const rendAcums=rows.map(r=>Math.round(r.ra))
+    const pgtoAcums=rows.map(r=>Math.round(r.pa))
+    let acc=1
+    const ipcaVals=meses.map(m=>{acc*=(1+m.ipca_pct/100);return Math.round(TOTAL*(acc-1))})
+    if(chartInst)chartInst.destroy()
+    chartInst=new Chart(document.getElementById('chart'),{
+      type:'bar',
+      data:{labels,datasets:[
+        {label:'Rendimento',data:rendAcums,backgroundColor:'#1D9E75',order:3},
+        {label:'IPCA',data:ipcaVals,backgroundColor:'rgba(186,117,23,.25)',borderColor:'#BA7517',borderWidth:1,order:2},
+        {label:'Pagamentos',data:pgtoAcums,type:'line',borderColor:'#E24B4A',borderWidth:2,borderDash:[4,3],pointRadius:3,pointBackgroundColor:'#E24B4A',fill:false,order:1}
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+        scales:{
+          x:{ticks:{font:{size:11},color:'#888',autoSkip:false,maxRotation:45},grid:{display:false}},
+          y:{ticks:{font:{size:11},color:'#888',callback:v=>'R$ '+(v/1000).toFixed(0)+'k'},grid:{color:'rgba(128,128,128,.08)'}}
+        }}
+    })
+  }
+
+  // Composição
+  renderComposicao(last)
+
+  // Resgate
+  renderResgate(rows)
+}
+
+function renderComposicao(last){
+  const tbody=document.getElementById('tbody-comp')
+  tbody.innerHTML=''
+  let totalR=0, TOTAL=totalPrincipal()
+  CDBS.forEach(c=>{
+    const lastCdi=last?meses[meses.length-1].cdi_pct/100:null
+    const rm=lastCdi!=null?c.valor*c.taxa*lastCdi:null
+    if(rm!=null)totalR+=rm
+    const peso=(c.valor/TOTAL*100).toFixed(1)
+    const tr=document.createElement('tr')
+    tr.innerHTML=`
+      <td>${c.nome}</td><td>${c.emissor}</td>
+      <td>${new Date(c.venc).toLocaleDateString('pt-BR')}</td>
+      <td class="tr"><span class="badge ${c.taxa>1?'bg':'bb'}">${(c.taxa*100).toFixed(0)}% CDI</span></td>
+      <td class="tr">${peso}%</td>
+      <td class="tr">${R(c.valor)}</td>
+      <td class="tr c-green">${rm!=null?R(rm):'—'}</td>
+    `
+    tbody.appendChild(tr)
+  })
+  document.getElementById('tfoot-valor').textContent=R(TOTAL)
+  document.getElementById('tfoot-rend').textContent=last?R(totalR):'—'
+}
+
+function renderResgate(rows){
+  const el=document.getElementById('resgate-content')
+  if(!rows||!rows.length){el.innerHTML='<div class="loading">Insira pelo menos um mês para calcular.</div>';return}
+  const hoje=new Date().toISOString().split('T')[0]
+  let html='', tBruto=0, tIR=0, tLiq=0
+  CDBS.forEach(c=>{
+    const d=dias(c.inicio,hoje)
+    const aliq=irAliq(d)
+    let rb=0; meses.forEach(m=>rb+=c.valor*c.taxa*(m.cdi_pct/100))
+    const ir=rb*aliq, liq=c.valor+rb-ir
+    tBruto+=rb; tIR+=ir; tLiq+=(c.valor+rb-ir)
+    html+=`<div class="resgate-cdb">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div><div style="font-weight:600;font-size:13px">${c.nome}</div>
+        <div style="font-size:11px;color:var(--muted)">${c.emissor} · venc. ${new Date(c.venc).toLocaleDateString('pt-BR')}</div></div>
+        <span class="badge ${irBadge(d)}">IR ${irLabel(d)} · ${d} dias</span>
+      </div>
+      <div class="resgate-grid">
+        <div><div class="ri-label">Principal</div><div class="ri-value">${R(c.valor)}</div></div>
+        <div><div class="ri-label">Rend. bruto acum.</div><div class="ri-value c-green">${R(rb)}</div></div>
+        <div><div class="ri-label">IR (${irLabel(d)})</div><div class="ri-value c-red">-${R(ir)}</div></div>
+        <div><div class="ri-label">Valor líquido</div><div class="ri-value c-blue">${R(liq)}</div></div>
+      </div>
+    </div>`
+  })
+  html+=`<div class="resgate-total">
+    <div style="font-weight:600;font-size:13px;margin-bottom:10px">Total consolidado</div>
+    <div class="resgate-grid">
+      <div><div class="ri-label">Principal total</div><div class="ri-value">${R(totalPrincipal())}</div></div>
+      <div><div class="ri-label">Rend. bruto total</div><div class="ri-value c-green">${R(tBruto)}</div></div>
+      <div><div class="ri-label">IR total estimado</div><div class="ri-value c-red">-${R(tIR)}</div></div>
+      <div><div class="ri-label">Líquido total</div><div class="ri-value c-blue" style="font-size:16px">${R(tLiq)}</div></div>
+    </div>
+  </div>`
+  el.innerHTML=html
+}
+
+// ═══════════════════════════════════════════════════════ UI
+function switchTab(id,btn){
+  document.querySelectorAll('.tab-pane').forEach(t=>t.classList.remove('active'))
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'))
+  document.getElementById('tab-'+id).classList.add('active')
+  btn.classList.add('active')
+}
+
+function openModal(){
+  const hoje=new Date()
+  document.getElementById('m-mes').value=hoje.getFullYear()+'-'+String(hoje.getMonth()+1).padStart(2,'0')
+  document.getElementById('m-cdi').value=''
+  document.getElementById('m-ipca').value=''
+  document.getElementById('modal-err').textContent=''
+  document.getElementById('modal-mes').style.display='flex'
+}
+function closeModal(){ document.getElementById('modal-mes').style.display='none' }
+
+// ═══════════════════════════════════════════════════════ UPLOAD PDF
+function openUpload(){
+  document.getElementById('upload-preview').style.display='none'
+  document.getElementById('upload-label').textContent='Clique ou arraste o PDF aqui'
+  document.getElementById('upload-err').textContent=''
+  document.getElementById('upload-manual').style.display='block'
+  document.getElementById('modal-upload').style.display='flex'
+}
+function closeUpload(){ document.getElementById('modal-upload').style.display='none'; pendingCdbs=null }
+
+function handleDrop(e){
+  e.preventDefault()
+  document.getElementById('drop-area').classList.remove('drag')
+  const file=e.dataTransfer.files[0]
+  if(file&&file.type==='application/pdf') handleFile(file)
+}
+
+function handleFile(file){
+  if(!file){return}
+  document.getElementById('upload-label').textContent='Lendo '+file.name+'...'
+  document.getElementById('upload-err').textContent=''
+  const reader=new FileReader()
+  reader.onload=e=>parsePDF(e.target.result,file.name)
+  reader.readAsText(file,'latin1')
+}
+
+function parsePDF(text, filename){
+  // Tenta extrair saldos dos CDBs do texto do PDF
+  // Padrões: "CDB BANCO XP S.A. - JAN/2028 - 100,00% CDI R$ 1.580.623,98"
+  const patterns = [
+    { key:'xp_jan28', nome:'CDB XP S.A.', emissor:'Banco XP', venc:'2028-01-05', taxa:1.00, inicio:'2025-01-05',
+      regex:/CDB BANCO XP.*?JAN.*?2028.*?R\$\s*([\d.,]+)/i },
+    { key:'xp_dez27', nome:'CDB XP S.A.', emissor:'Banco XP', venc:'2027-12-30', taxa:1.00, inicio:'2025-12-30',
+      regex:/CDB BANCO XP.*?DEZ.*?2027.*?R\$\s*([\d.,]+)/i },
+    { key:'carrefour', nome:'CDB Carrefour', emissor:'Banco Carrefour', venc:'2027-04-28', taxa:1.02, inicio:'2025-04-28',
+      regex:/CDB BANCO CARREFOUR.*?ABR.*?2027.*?R\$\s*([\d.,]+)/i },
+  ]
+
+  const parsed=[]
+  let found=0
+  patterns.forEach(p=>{
+    const m=text.match(p.regex)
+    if(m){
+      const val=parseFloat(m[1].replace(/\./g,'').replace(',','.'))
+      if(!isNaN(val)&&val>0){
+        parsed.push({nome:p.nome,emissor:p.emissor,venc:p.venc,taxa:p.taxa,valor:val,inicio:p.inicio})
+        found++
+      }
+    }
+  })
+
+  if(found>=2){
+    pendingCdbs=parsed
+    showPreview(parsed)
+  } else {
+    // PDF é binário, parsing de texto não funcionou — mostrar campos manuais
+    document.getElementById('upload-label').textContent='PDF carregado: '+filename
+    document.getElementById('upload-err').textContent='Não foi possível ler os saldos automaticamente. Preencha os valores abaixo manualmente.'
+    document.getElementById('upload-manual').style.display='block'
+  }
+}
+
+function showPreview(cdbs){
+  document.getElementById('upload-preview').style.display='block'
+  document.getElementById('upload-manual').style.display='none'
+  const TOTAL=cdbs.reduce((a,c)=>a+c.valor,0)
+  let html='<table style="margin-bottom:12px"><thead><tr><th>Ativo</th><th class="tr">Saldo lido</th><th class="tr">% Aloc.</th></tr></thead><tbody>'
+  cdbs.forEach(c=>{
+    html+=`<tr><td>${c.nome}<br><span style="font-size:11px;color:var(--muted)">${c.emissor} · venc. ${new Date(c.venc).toLocaleDateString('pt-BR')}</span></td>
+      <td class="tr c-green">${R(c.valor)}</td>
+      <td class="tr">${(c.valor/TOTAL*100).toFixed(1)}%</td></tr>`
+  })
+  html+=`</tbody><tfoot><tr class="tr-total"><td>Total</td><td class="tr">${R(TOTAL)}</td><td class="tr">100%</td></tr></tfoot></table>`
+  document.getElementById('preview-content').innerHTML=html
+}
+
+async function confirmarCarteira(){
+  if(!pendingCdbs)return
+  await saveCarteira(pendingCdbs)
+  CDBS=pendingCdbs
+  pendingCdbs=null
+  closeUpload()
+  await loadCarteira()
+  renderAll()
+}
+
+function renderManualFields(){
+  const div=document.getElementById('manual-fields')
+  let html=''
+  CDBS.forEach((c,i)=>{
+    html+=`<div class="field">
+      <label>${c.nome} — ${c.emissor} (venc. ${new Date(c.venc).toLocaleDateString('pt-BR')})</label>
+      <input type="number" id="manual-${i}" step="0.01" placeholder="${c.valor.toFixed(2)}" value="${c.valor.toFixed(2)}">
+    </div>`
+  })
+  div.innerHTML=html
+}
+
+async function salvarManual(){
+  const novos=CDBS.map((c,i)=>{
+    const v=parseFloat(document.getElementById('manual-'+i).value)
+    return {...c, valor:isNaN(v)?c.valor:v}
+  })
+  await saveCarteira(novos)
+  CDBS=novos
+  closeUpload()
+  await loadCarteira()
+  renderAll()
+}
+
+// ═══════════════════════════════════════════════════════ BOOT
+;(async()=>{
+  const {data:{session}}=await sb.auth.getSession()
+  if(session) initApp()
+})()
+</script>
+</body>
+</html>
